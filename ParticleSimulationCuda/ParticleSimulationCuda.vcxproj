@@ -13,6 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{073F2F84-2AEF-4BF7-BF2B-F120BC96024D}</ProjectGuid>
     <RootNamespace>ParticleSimulationCuda</RootNamespace>
+    <ProjectName>NBodySimulation</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -80,10 +81,6 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <CudaCompile Include="kernel.cu" />
-    <CudaCompile Include="test.cu" />
-  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="includes\glm\detail\glm.cpp" />
@@ -383,6 +380,7 @@
     <ClInclude Include="includes\glm\vector_relational.hpp" />
     <ClInclude Include="includes\KHR\khrplatform.h" />
     <ClInclude Include="shader\Shader.h" />
+    <ClInclude Include="simulation\BarnesHut.h" />
     <ClInclude Include="simulation\particle.h" />
     <ClInclude Include="simulation\particlesystem.h" />
     <ClInclude Include="simulation\shapes.h" />

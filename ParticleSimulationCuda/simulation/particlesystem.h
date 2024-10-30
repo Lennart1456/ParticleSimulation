@@ -3,6 +3,11 @@
 #include <vector>
 #include <random>
 #include "particle.h"
+#include "BarnesHut.h"
+#include <thread>
+#include <iostream>
+
+
 
 struct Particlesystem {
 	int amount;
@@ -18,8 +23,10 @@ struct Particlesystem {
 
 	float energy;
 
+	Quadtree Qtree;
 
-	Particlesystem(int n, bool g, bool c) {
+
+	Particlesystem(int n, bool g, bool c){
 		amount = n;
 		gravity_on = g;
 		collision_on = c;
@@ -27,6 +34,7 @@ struct Particlesystem {
 		calc_center_mass();
 	}
 
+	//spawns random particles, only sets the position, velocity is 0
 	void spawn() {
 
 		std::random_device rd; // obtain a random number from hardware
@@ -49,15 +57,12 @@ struct Particlesystem {
 			vx = distr(gen);
 			vy = distr(gen);
 			
-			//Particle p(0.1f, glm::vec3(x * 10.f, y * 10.f, 0.f), glm::vec3(0.1 * vx, 0.1 * vy, 0.f));
 			Particle p(0.01f, glm::vec3(x * 10.f, y * 10.f, 0.f), glm::vec3(0.f, 0.f, 0.f));
 			particles.push_back(p);
-
-			total_mass += p.radius;
-			//particles.push_back(Particle(0.1f, glm::vec3(x * 10.f , y * 10.f , 0.f), glm::vec3(0.1 * vx, 0.1 * vy, 0.f)));
 		}
 	}
 
+	//unused
 	void calc_center_mass() {
 		glm::vec3 weighted_position(0.f);
 		glm::vec3 weighted_velocity(0.f);
@@ -70,6 +75,7 @@ struct Particlesystem {
 		center_mass_vel = weighted_velocity / total_mass;
 	}
 
+	//unused
 	void calc_energy() {
 		float e_pot = 0.f;
 		float e_kin = 0.f;
@@ -83,6 +89,7 @@ struct Particlesystem {
 		std::cout << "Energy: " << energy << "Potential: " << e_pot << "Kinetic: " << e_kin << std::endl;
 	}
 
+	//unused
 	void calc_angular_momentum() {
 
 		float linear_momentum = total_mass * glm::length(center_mass_vel);
@@ -98,17 +105,63 @@ struct Particlesystem {
 		}
 	}
 
+	// creates Quadtree, calculates the forces based on it and calculates the new velocity of the particles
 	void update() {
-		//calc_center_mass();
-		//calc_energy();
-
-		loop_particles();
+		barnes_hut_multi();
 
 		for (Particle &p : particles) {
 			p.forces_verlet();
 		}
+
+		// Vector is emptied, memory is still allocated
+		Qtree.nodes.clear();
+		Qtree.init_root_node();
 	}
 
+	// barnes hut single thread
+	void barnes_hut() {
+
+		//construct the tree
+		for (int i = 0; i < amount; i++) {
+			Qtree.insert(particles[i].position, 1.f);
+		}
+
+		//traverse about 10x longer than construct
+		for (int i = 0; i < amount; i++) {
+			particles[i].new_acceleration = Qtree.calc_forces_fast(particles[i].position, 1.f);
+		}
+	}
+
+
+	// helper fuction for multithreading
+	void traverse_multi(int n, int thread_nr) {
+		for (int i = n * thread_nr; i < (thread_nr + 1) * n; i++) {
+			particles[i].new_acceleration = Qtree.calc_forces_fast(particles[i].position, 1.f);
+		}
+	}
+
+	// barnes hut multithreading
+	void barnes_hut_multi() {
+
+		for (int i = 0; i < amount; i++) {
+			Qtree.insert(particles[i].position, 1.f);
+		}
+
+		int partition = amount / 4;
+
+		std::thread t0(&Particlesystem::traverse_multi, this, partition, 0);
+		std::thread t1(&Particlesystem::traverse_multi, this, partition, 1);
+		std::thread t2(&Particlesystem::traverse_multi, this, partition, 2);
+		std::thread t3(&Particlesystem::traverse_multi, this, partition, 3);
+
+		t0.join();
+		t1.join();
+		t2.join();
+		t3.join();
+
+	}
+
+	// loop for naive force calculation approach, collision possible, unused
 	void loop_particles() {
 
 		for (int i = 0; i < amount; i++) {
@@ -133,9 +186,8 @@ struct Particlesystem {
 				}
 			}
 		}
-	
-	
 
+	// naive n^n calculation of the forces between the particles
 	void calc_acceleration_brute() {
 		
 		for (int i = 0; i < amount; i++) {
@@ -165,6 +217,7 @@ struct Particlesystem {
 		}
 	}
 
+	// unused
 	void collision_check() {
 
 		float distance = 0;
@@ -208,6 +261,7 @@ struct Particlesystem {
 		}
 	}
 
+	// unused
 	void resolve_collision(Particle& p1, Particle& p2) {
 		float distance = glm::length(p2.position - p1.position);
 
@@ -229,6 +283,7 @@ struct Particlesystem {
 		}
 	}
 
+	// unused, helper for previous naive forces and collision simulation
 	void calc_acceleration(Particle& p1, Particle& p2) {
 
 		if (p1.position != p2.position) {
