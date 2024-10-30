@@ -81,10 +81,6 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="kernel.cu" />
-    <CudaCompile Include="test.cu" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="includes\glm\detail\glm.cpp" />
     <ClCompile Include="main.cpp" />
@@ -383,6 +379,7 @@
     <ClInclude Include="includes\glm\vector_relational.hpp" />
     <ClInclude Include="includes\KHR\khrplatform.h" />
     <ClInclude Include="shader\Shader.h" />
+    <ClInclude Include="simulation\BarnesHut.h" />
     <ClInclude Include="simulation\particle.h" />
     <ClInclude Include="simulation\particlesystem.h" />
     <ClInclude Include="simulation\shapes.h" />

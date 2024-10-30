@@ -1,8 +1,27 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include <random>
 #include "particle.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "BarnesHut.h"
+
+extern "C" float routine(float* A, float* B, float* C, int numElements);
+
+int test_amount = 1000;
+
+std::vector<float> test_v1;
+std::vector<float> test_v2;
+
+float* test_a3 = (float*)calloc(test_amount, sizeof(float));
+
+float* test_a4 = (float*)calloc(test_amount, sizeof(float));
+float* test_a5 = (float*)calloc(test_amount, sizeof(float));
+
+float* test_a1;
+float* test_a2;
 
 struct Particlesystem {
 	int amount;
@@ -18,13 +37,16 @@ struct Particlesystem {
 
 	float energy;
 
+	Quadtree Qtree;
 
-	Particlesystem(int n, bool g, bool c) {
+
+	Particlesystem(int n, bool g, bool c){
 		amount = n;
 		gravity_on = g;
 		collision_on = c;
 		spawn();
 		calc_center_mass();
+		//gen_test_array();
 	}
 
 	void spawn() {
@@ -102,10 +124,26 @@ struct Particlesystem {
 		//calc_center_mass();
 		//calc_energy();
 
-		loop_particles();
+		//loop_particles();
+		barnes_hut();
 
 		for (Particle &p : particles) {
 			p.forces_verlet();
+		}
+
+		Qtree.nodes.clear();
+		Qtree.init_root_node();
+	}
+
+	void barnes_hut() {
+
+		//construct the tree
+		for (int i = 0; i < amount; i++) {
+			Qtree.insert(particles[i].position, 1.f);
+		}
+
+		for (int i = 0; i < amount; i++) {
+			particles[i].new_acceleration = Qtree.calc_forces_fast(particles[i].position, 1.f);
 		}
 	}
 
@@ -242,5 +280,20 @@ struct Particlesystem {
 			p1.new_acceleration += acc_scalar1 * normaL_vector;
 			p2.new_acceleration -= acc_scalar2 * normaL_vector;
 		}
+	}
+
+	void gen_test_array() {
+
+		for (int i = 0; i < amount; i++) {
+			test_v1.push_back(particles[i].position.x);
+			test_v2.push_back(particles[1].position.x);
+
+			test_a4[i] = particles[i].position.x;
+			test_a5[i] = particles[1].position.x;
+
+		}
+
+		float* test_a1 = &test_v1[0];
+		float* test_a2 = &test_v2[0];
 	}
 };
