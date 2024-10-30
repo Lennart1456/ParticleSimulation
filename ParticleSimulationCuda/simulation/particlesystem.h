@@ -6,6 +6,7 @@
 #include "particle.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "BarnesHut.h"
 
 extern "C" float routine(float* A, float* B, float* C, int numElements);
 
@@ -22,7 +23,6 @@ float* test_a5 = (float*)calloc(test_amount, sizeof(float));
 float* test_a1;
 float* test_a2;
 
-
 struct Particlesystem {
 	int amount;
 	const float gravitational_constant = 0.06743f;
@@ -36,6 +36,8 @@ struct Particlesystem {
 	float total_mass;
 	float energy;
 
+	Quadtree Qtree;
+
 
 	Particlesystem(int n, bool g, bool c){
 		amount = n;
@@ -43,7 +45,7 @@ struct Particlesystem {
 		collision_on = c;
 		spawn();
 		calc_center_mass();
-		gen_test_array();
+		//gen_test_array();
 	}
 
 	void spawn() {
@@ -121,14 +123,26 @@ struct Particlesystem {
 		//calc_center_mass();
 		//calc_energy();
 
-		loop_particles();
-
-		routine(test_a4, test_a5, test_a3, test_amount);
-		std::cout << test_a3[2] << std::endl;
-		
+		//loop_particles();
+		barnes_hut();
 
 		for (Particle &p : particles) {
 			p.forces_verlet();
+		}
+
+		Qtree.nodes.clear();
+		Qtree.init_root_node();
+	}
+
+	void barnes_hut() {
+
+		//construct the tree
+		for (int i = 0; i < amount; i++) {
+			Qtree.insert(particles[i].position, 1.f);
+		}
+
+		for (int i = 0; i < amount; i++) {
+			particles[i].new_acceleration = Qtree.calc_forces_fast(particles[i].position, 1.f);
 		}
 	}
 

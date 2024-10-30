@@ -11,6 +11,7 @@
 #include "simulation/particle.h"
 #include "simulation/shapes.h"
 #include "simulation/particlesystem.h"
+#include "simulation/BarnesHut.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -22,10 +23,10 @@ const unsigned int SCR_HEIGHT = 1280;
 int main()
 {
     Circle c1(40);
-    Particlesystem s1(100, true, false);
+    Particlesystem s1(1000000, true, false);
 
     //limits physics updated to 60 per second -> dt = 1 / 60 s
-    static double limitFPS = 1 / 120.f;
+    static double limitFPS = 1 /30.f;
 
     double lastTime = glfwGetTime(), timer = lastTime;
     double deltaTime = 0, nowTime = 0;

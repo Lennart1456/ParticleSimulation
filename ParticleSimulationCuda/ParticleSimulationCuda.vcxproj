@@ -379,6 +379,7 @@
     <ClInclude Include="includes\glm\vector_relational.hpp" />
     <ClInclude Include="includes\KHR\khrplatform.h" />
     <ClInclude Include="shader\Shader.h" />
+    <ClInclude Include="simulation\BarnesHut.h" />
     <ClInclude Include="simulation\particle.h" />
     <ClInclude Include="simulation\particlesystem.h" />
     <ClInclude Include="simulation\shapes.h" />
@@ -524,10 +525,6 @@
     <None Include="includes\glm\gtx\wrap.inl" />
     <None Include="shader\shader.frag" />
     <None Include="shader\shader.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="FastDistances.cu" />
-    <CudaCompile Include="test.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
