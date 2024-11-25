@@ -1,20 +1,16 @@
 #pragma once
 #include <vector>
 #include <glm/glm.hpp>
-#include <iostream>
-
-
 
 
 /*contains the bounding box of a node
 	Quadrant indices:
 	3 | 0
-	--|---
+	--|--
 	2 | 1
 */
 struct Quad {
 	glm::vec3 center;
-	//vec2 center;
 	float size;
 
 	Quad() : center(), size(0.f) {};
@@ -24,8 +20,6 @@ struct Quad {
 	glm::vec3 new_quadrant(int q) {
 
 		glm::vec3 quad_center;
-
-		//size  = parent size / 2, center = parent size / 4
 
 		switch (q) {
 		case 0:
@@ -48,7 +42,7 @@ struct Quad {
 
 		glm::vec3 rel_pos = v - center;
 
-		//check in bounds of box
+		//check if point is in bounds of overall box
 		if (v.x > center.x + size / 2 || v.x < center.x - size / 2) {
 			return NULL;
 		}
@@ -57,6 +51,7 @@ struct Quad {
 			return NULL;
 		}
 
+		//find the correct quadrant
 		if (rel_pos.x > 0) {
 			if (rel_pos.y > 0) {
 				//top_right
@@ -81,22 +76,20 @@ struct Quad {
 
 };
 
-//contains information about the indeces of its children
+//contains information about the indices of its children
 struct Node {
 	int children; //index of the children in the nodes array
 	int parent;
-	int next;
-	bool leaf; //true = leaf, false = branch
+	bool is_leaf; //true = leaf, false = branch
 
 	glm::vec3 center_mass;
 	float mass;
 	Quad quad;
 
-	Node() : children(0), next(0), mass(0.f), quad(), leaf(true), center_mass(0.f), parent(0) {};
+	Node() : children(0), mass(0.f), quad(), is_leaf(true), center_mass(0.f), parent(0) {};
 
-	//check if the body is far away enough from the nodes center of mass, to split
+	//check if the body is sufficently far away from the nodes center of mass to split
 	bool check_criterion(glm::vec3 pos_body, float theta) {
-		//check s square / d square to avoid root
 		glm::vec3 delta_center_mass = glm::vec3((center_mass.x - pos_body.x), (center_mass.y, pos_body.y), 0.f);
 
 		float d = delta_center_mass.x * delta_center_mass.x + delta_center_mass.y * delta_center_mass.y;
@@ -118,13 +111,13 @@ struct Quadtree {
 	std::vector<Node> nodes;
 	std::vector<int> parents;
 
-	std::vector <bool> blocked_parents;
+	std::vector <bool> blocked_parents; //not needed for the final use
 
 	float gravitational_constant;
 	float theta;
-	float min_Quad_size; //sets the smallest size of a quad, to avoid the tree blowing up
+	float min_Quad_size; //sets the smallest size of a quad, not implemented
 
-	Quadtree() : nodes(), parents(), theta(0.9f), min_Quad_size(0.01f), gravitational_constant(0.001f) { init_root_node(); };
+	Quadtree() : nodes(), parents(), gravitational_constant(0.00001f), theta(0.9f), min_Quad_size(0.01f) { init_root_node(); };
 
 	void init_root_node() {
 		Node root_node = Node();
@@ -133,47 +126,36 @@ struct Quadtree {
 		nodes.push_back(root_node);
 	}
 
-	//added points are not passed down, when the tree is split
+	// recursively inserts a point into the quadtree, either expands it or adds it to node
 	void insert(glm::vec3 &pos, float mass) {
 
 		int current_node = root;
 
-		//navigates down the existing internal / non leaf nodes until leaf node
-		while (!nodes[current_node].leaf) {
-			//update the center of mass and mass of the existing nodes, center of mass needs to be divided by the amount of bodies underneath the nodes
-			//either calculate the average of x and y each step, or after the tree is created
+		//navigates down the existing internal / non leaf nodes and updates them until a leaf node is reached
+		while (!nodes[current_node].is_leaf) {
 			nodes[current_node].mass += mass;
 			nodes[current_node].center_mass.x + pos.x;
 			nodes[current_node].center_mass.y + pos.y;
 
-			//find the index of the child node representing the right quadrant
+			//find the index of the child node representing the right quadrant for the point
 			int quadrant = nodes[current_node].quad.find_quadrant(pos);
 
-			//+1 to account for root? no because children is at index of node + x
 			current_node = nodes[current_node].children + quadrant;
 		}
 
-		//if it is not empty, the node is recursively subdivided until a sufficent quadrant is reached
 
 		while (true) {
 
-			//before a node is split, it only has one body in it -> when it is split, that body has to be passed down to the appropiate child node
-
-			//add the body to the node if current node or newly created node is empty
-			//or if the nodes quad size is lower than the minimum quad size
-			if (nodes[current_node].mass == 0 || nodes[current_node].quad.size < min_Quad_size) {
+			// if the leaf node is empty, the point is added to it
+			if (nodes[current_node].mass == 0) {
 				nodes[current_node].mass += mass;
-
 				nodes[current_node].center_mass += pos;
-
-				//nodes[current_node].center_mass.x += pos.x;
-				//nodes[current_node].center_mass.y += pos.y;
 				return;
 			}
 
 			//no free node in existing tree, tree is further subdivided, current node gets 4 children, becomes internal node
 			nodes[current_node].children = nodes.size();
-			nodes[current_node].leaf = false;
+			nodes[current_node].is_leaf = false;
 
 			//child nodes are created for each quadrant
 			for (int i = 0; i < 4; i++) {
@@ -184,8 +166,8 @@ struct Quadtree {
 				nodes.push_back(child);
 			}
 
-			//body attached to parent node passed to appropiate child node
-			//error prone maybe
+			//previously to current node attached point is passed down to the appropiate child node, since current node is not a leaf node anymore 
+
 			Node& pass_child = nodes[nodes[current_node].children + nodes[current_node].quad.find_quadrant(nodes[current_node].center_mass)];
 			pass_child.center_mass.x = nodes[current_node].center_mass.x;
 			pass_child.center_mass.y = nodes[current_node].center_mass.y;
@@ -196,11 +178,8 @@ struct Quadtree {
 			nodes[current_node].center_mass.x += pos.x;
 			nodes[current_node].center_mass.y += pos.y;
 
-			//+ 1 ? To account for the new internal node? or +.children??
+			//the child node with the correct quadrant becomes the new current node
 			current_node = nodes[current_node].quad.find_quadrant(pos) + nodes[current_node].children;
-
-			//recursion? no because then the mass would be added to all nodes for each node added
-			//insert(pos, mass);
 		}
 
 	}
@@ -216,8 +195,6 @@ struct Quadtree {
 		//if a node is used for an approximation in relation to a body, the value of the array at node index becomes true, so that its children arent used further
 		//this does not seem to be a good approach, as it still requires bodies * nodes comparisions
 
-		//std::vector <bool> blocked_parents(nodes.size(), false);
-
 		blocked_parents = std::vector<bool>(nodes.size(), false);
 
 		for (int current_node = 0; current_node < nodes.size(); current_node++) {
@@ -232,7 +209,7 @@ struct Quadtree {
 					continue;
 				}
 				//if node is leaf -> contains just one body
-				if (nodes[current_node].leaf) {
+				if (nodes[current_node].is_leaf) {
 					acceleration += calc_acceleration(1.f, nodes[current_node].mass, distance, direction_vector);
 				}
 				//if it isnt a leaf, contains multiple bodies, check if node is sufficently far away from body, to approximate the force
@@ -250,44 +227,44 @@ struct Quadtree {
 	}
 
 	//Nice optimal n * log(n) way to traverse
-	//Algorithm itself is fine, optimization still needed
+	//tree is recursively traversed until the leaf nodes are reached or the node is sufficently far away from the point to approximate
 	void traverse_tree(int current_node, glm::vec3 &pos, glm::vec3 &acceleration) {
 
+		// goes into the indices of the nodes children
 		for (int i = 0; i < 4; i++) {
 			
 			int child_id = nodes[current_node].children + i;
 
+			//the tree is not pruned, so check if the node is empty
 			if (nodes[child_id].mass == 0) {
 				continue;
 			}
 
+			// calculate distance direction vector to get the distance and to be used for the force calculation
 			glm::vec3 direction_vector = (nodes[child_id].center_mass / nodes[child_id].mass) - pos; //Vector pointing from Body to Nodes center of mass
 			float distance = glm::length(direction_vector);
 
+			//check against nodes center of mass instead? Avoids prior direction vector calculation
 			if (distance == 0) {
 				continue;
 			}
 			
-			//if child is leaf, calculate the force (distance and direction vector has to be implemented correctly)
-			if (nodes[child_id].leaf) {
+			//if a leaf node is reached, the force / acceleration is calculated
+			if (nodes[child_id].is_leaf) {
 				acceleration += calc_acceleration(1.f, nodes[child_id].mass, distance, direction_vector);
 				continue;
 			}
 
-			//treat node as single body, to approximate the force
+			//if the node is sufficently far away, treat the node as single body to approximate the force
 			if ((nodes[child_id].quad.size / distance) < theta) {
 				acceleration += calc_acceleration(1.f, nodes[child_id].mass, distance, direction_vector);
 				continue;
 			}
 			else {
-				//may not skip back to the parents, although they might still have unconsidered children left
-				//possible solution: pass current_node by value, not by reference
-
 				// THIS BREAKS THE RECURSION
 				//current_node = child_id breaks the recursion loop when traversing from child to parent. As the loop for the parent has now the ID of the child as its current node
 				//current_node = child_id;
-				//set child_id 0, to ensure a full return to root ??
-				//child_id = 0;
+				
 				traverse_tree(child_id, pos, acceleration);
 			}
 		}
